@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 
-class Forecaster():
+class Forecaster:
     """Handles training of a PyTorch model and can be used to generate samples
     from approximate posterior predictive distribution.
 
@@ -19,6 +19,7 @@ class Forecaster():
         * verbose (bool): Verbosity of forecaster.
     
     """
+
     def __init__(self,
                  model,
                  loss,
@@ -52,11 +53,11 @@ class Forecaster():
         start_time = time.time()
         for epoch in range(1, self.n_epochs + 1):
             self._train(dataloader_train, epoch, start_time)
-            self._save_checkpoint()            
+            self._save_checkpoint()
             if eval_model:
                 train_loss = self._evaluate(dataloader_train)
                 if self.verbose: print('\nTraining error: {:1.2e}.'.format(train_loss))
-                self.history['training'].append(train_loss) 
+                self.history['training'].append(train_loss)
             if dataloader_val:
                 val_loss = self._evaluate(dataloader_val)
                 if self.verbose: print('Validation error: {:1.2e}\n.'.format(val_loss))
@@ -93,25 +94,26 @@ class Forecaster():
                 n_total = len(dataloader.dataset)
                 percentage = 100.0 * (idx + 1) / len(dataloader)
                 elapsed = time.time() - start_time
-                remaining = elapsed*((self.n_epochs*n_total)/((epoch-1)*n_total + n_trained) - 1)
+                remaining = elapsed * ((self.n_epochs * n_total) / ((epoch - 1) * n_total + n_trained) - 1)
                 status = '\rEpoch {}/{} [{}/{} ({:.0f}%)]\t' \
-                       + 'Loss: {:.6f}\t' \
-                       + 'Elapsed/Remaining: {:.0f}m{:.0f}s/{:.0f}m{:.0f}s   '
+                         + 'Loss: {:.6f}\t' \
+                         + 'Elapsed/Remaining: {:.0f}m{:.0f}s/{:.0f}m{:.0f}s   '
                 print(
                     status.format(
-                        epoch, 
-                        self.n_epochs, 
-                        n_trained, 
-                        n_total, 
+                        epoch,
+                        self.n_epochs,
+                        n_trained,
+                        n_total,
                         percentage,
                         loss.mean().item(),
                         elapsed // 60,
                         elapsed % 60,
-                        remaining // 60, 
+                        remaining // 60,
                         remaining % 60
-                    ), 
-                    end=""
-                )            
+                    ),
+                    end="",
+                    flush=True
+                )
 
     def _evaluate(self, dataloader, n_samples=10):
         """Returns the approximate min negative log likelihood of the model 
@@ -122,22 +124,22 @@ class Forecaster():
             * n_samples (int): Number of forecast samples.
         
         """
-        max_llikelihood = [0]*n_samples
+        max_llikelihood = [0] * n_samples
         with torch.no_grad():
             for batch in dataloader:
                 inputs = batch['X'].to(self.device)
                 targets = batch['y'].to(self.device)
-                
+
                 # Forward pass through the model
                 outputs = self.model(inputs)
                 outputs.pop('regularizer')
-                
+
                 # Calculate loss (typically probability density)    
                 for i in range(n_samples):
-                    loss = self.loss(**outputs).log_prob(targets) 
+                    loss = self.loss(**outputs).log_prob(targets)
                     max_llikelihood[i] += loss.sum().item()
             max_llikelihood = np.max(max_llikelihood)
-            
+
         return -max_llikelihood / len(dataloader.dataset)
 
     def predict(self, dataloader, n_samples=100) -> np.array:
@@ -188,14 +190,10 @@ class Forecaster():
             predictions = np.concatenate(predictions, axis=1)
 
         return predictions
-    
+
     def _save_checkpoint(self):
         """Save a complete PyTorch model checkpoint."""
         filename = self.checkpoint_path
         filename += 'checkpoint_model.pt'
-        save_dict = {}
-        save_dict['model_def'] = self.model
-        save_dict['optimizer_state_dict'] = self.optimizer.state_dict()
-        save_dict['loss'] = self.loss
+        save_dict = {'model_def': self.model, 'optimizer_state_dict': self.optimizer.state_dict(), 'loss': self.loss}
         torch.save(save_dict, filename)
-
