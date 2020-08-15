@@ -143,15 +143,11 @@ def rmse(data_samples, data_truth, agg=None, **kwargs) -> np.array:
     """
     if data_samples.shape[1:] != data_truth.shape:
         raise ValueError('Last three dimensions of data_samples and data_truth need to be compatible')
-    agg = np.median if not agg else agg
 
-    # Aggregate over samples
-    data = agg(data_samples, axis=0)
-
-    return np.sqrt(mse(data, data_truth))
+    return np.sqrt(mse(data_samples, data_truth, agg))
 
 
-def coverage(data_samples, data_truth, percentiles=None, **kwargs) -> list:
+def coverage(data_samples, data_truth, percentiles=None) -> list:
     """Computes coverage rates of the prediction interval.
 
     Arguments:
